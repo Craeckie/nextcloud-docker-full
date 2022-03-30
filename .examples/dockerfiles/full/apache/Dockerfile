@@ -1,9 +1,9 @@
-FROM nextcloud:apache
+FROM nextcloud
 
 RUN set -ex; \
     \
     apt-get update; \
-    apt-get install -y --no-install-recommends \
+    apt-get upgrade -y --no-install-recommends \
         ffmpeg \
         libmagickcore-6.q16-6-extra \
         procps \
@@ -26,6 +26,7 @@ RUN set -ex; \
     ; \
     \
     docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
+    ln -svf "/usr/include/$(dpkg-architecture --query DEB_BUILD_MULTIARCH)/gmp.h" /usr/include/gmp.h; \
     docker-php-ext-install \
         bz2 \
         imap \
@@ -47,12 +48,25 @@ RUN set -ex; \
     apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
     rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p \
-    /var/log/supervisord \
-    /var/run/supervisord \
-;
+RUN rm -f /etc/apache2/mods-enabled/reqtimeout.{conf,load}
 
-COPY supervisord.conf /
+ADD 000-default.conf userdata.conf /etc/apache2/sites-available/
+RUN mkdir -p --mode=660 /var/www/userdata && \
+    chown 9000:9000 /var/www/userdata && \
+    a2enmod proxy_http ssl headers env dir mime proxy && \
+    a2ensite userdata
+
+# RUN apt update && apt install -y gnupg && \
+#     echo deb https://dl.jsxc.org stable main > /etc/apt/sources.list.d/jsxc.list && \
+#     curl https://dl.jsxc.org/archive.key | apt-key add - && \
+#     apt update && \
+#     apt install -y xcauth
+
+RUN apt-get update && apt-get  install -y supervisor && \
+    mkdir -p /var/log/supervisord /var/run/supervisord && \
+    rm -rf /var/lib/apt/lists/*
+
+ADD supervisord.conf /supervisord.conf
 
 ENV NEXTCLOUD_UPDATE=1
 
