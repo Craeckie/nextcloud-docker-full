@@ -37,7 +37,10 @@ RUN set -ex; \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )"; \
     apk add --virtual .nextcloud-phpext-rundeps $runDeps; \
-    apk del .build-deps
+    apk del .build-deps && \
+    apk add py3-pip && \
+    pip3 install --upgrade pip && \
+    pip3 install --upgrade gpxpy requests SRTM.py # for gpxpod
 
 RUN mkdir -p \
     /var/log/supervisord \
